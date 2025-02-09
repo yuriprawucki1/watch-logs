@@ -1,5 +1,5 @@
-import "dotenv/config";
-import type { ZodSchema } from "zod";
+import 'dotenv/config'
+import type { ZodSchema } from 'zod'
 
 /**
  * Validates the current environment variables against a schema and returns them typed.
@@ -9,20 +9,18 @@ import type { ZodSchema } from "zod";
  * @returns The environment variables typed.
  */
 export const envalidate = <T>(schema: ZodSchema): T => {
-  const { env } = process;
-  const { success, error, data } = schema.safeParse(env);
+  const { env } = process
+  const { success, error, data } = schema.safeParse(env)
   if (!success) {
     // biome-ignore lint/suspicious/noConsole: Allow console.error for logging errors to the user
-    console.error(
-      "The following environment variables are missing or invalid:"
-    );
+    console.error('The following environment variables are missing or invalid:')
     for (const element of error.issues) {
       // biome-ignore lint/suspicious/noConsole: Allow console.error for logging errors to the user
-      console.error(`${element.path.join(".")}: ${element.message}`);
+      console.error(`${element.path.join('.')}: ${element.message}`)
     }
     // biome-ignore lint/suspicious/noConsole: Allow console.error for logging errors to the user
-    console.error("Please check your .env file and try again.");
-    process.exit(1);
+    console.error('Please check your .env file and try again.')
+    process.exit(1)
   }
-  return data as T;
-};
+  return data as T
+}

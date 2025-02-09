@@ -1,3 +1,3 @@
-import { baseLogSchema } from "@/schemas/common/baseLogSchema";
+import { baseLogSchema } from '@/schemas/common/baseLogSchema'
 
-export const systemSchema = baseLogSchema;
+export const systemSchema = baseLogSchema
