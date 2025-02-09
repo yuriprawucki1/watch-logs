@@ -1,0 +1,150 @@
+{
+  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "vcs": {
+    "enabled": false,
+    "clientKind": "git",
+    "useIgnoreFile": true
+  },
+  "files": {
+    "ignore": [
+      "node_modules",
+      "dist",
+      ".vscode",
+      ".husky",
+      ".env",
+      ".env.local"
+    ]
+  },
+  "organizeImports": {
+    "enabled": true
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true,
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "warn",
+        "noUselessStringConcat": "warn",
+        "noUselessUndefinedInitialization": "warn",
+        "useDateNow": "warn",
+        "useSimplifiedLogicExpression": "warn"
+      },
+      "correctness": {
+        "noConstantMathMinMaxClamp": "warn",
+        "noInvalidNewBuiltin": "warn",
+        "noUnusedImports": "warn",
+        "noUnusedPrivateClassMembers": "warn",
+        "noUnusedVariables": "warn",
+        "useArrayLiterals": "warn",
+        "useHookAtTopLevel": "error"
+      },
+      "nursery": {
+        "noCommonJs": "error",
+        "noDescendingSpecificity": "warn",
+        "noDocumentCookie": "warn",
+        "noDocumentImportInPage": "warn",
+        "noDuplicateCustomProperties": "warn",
+        "noDuplicateElseIf": "error",
+        "noDuplicateProperties": "error",
+        "noDuplicatedFields": "error",
+        "noDynamicNamespaceImportAccess": "error",
+        "noEnum": "warn",
+        "noExportedImports": "warn",
+        "noHeadElement": "error",
+        "noHeadImportInDocument": "error",
+        "noImgElement": "error",
+        "noIrregularWhitespace": "error",
+        "noMissingVarFunction": "warn",
+        "noNestedTernary": "error",
+        "noOctalEscape": "error",
+        "noProcessEnv": "error",
+        "noSecrets": "error",
+        "noStaticElementInteractions": "error",
+        "noSubstr": "error",
+        "noTemplateCurlyInString": "warn",
+        "noUnknownPseudoClass": "error",
+        "noUnknownTypeSelector": "error",
+        "noUselessEscapeInRegex": "error",
+        "noUselessStringRaw": "warn",
+        "noValueAtRule": "error",
+        "useAdjacentOverloadSignatures": "warn",
+        "useAriaPropsSupportedByRole": "warn",
+        "useAtIndex": "warn",
+        "useCollapsedIf": "warn",
+        "useComponentExportOnlyModules": "warn",
+        "useConsistentCurlyBraces": "error",
+        "useDeprecatedReason": "error",
+        "useExplicitType": "error",
+        "useGoogleFontDisplay": "warn",
+        "useGuardForIn": "warn",
+        "useImportRestrictions": "warn",
+        "useSortedClasses": "warn",
+        "useStrictMode": "warn",
+        "useTrimStartEnd": "warn",
+        "useValidAutocomplete": "warn"
+      },
+      "performance": {
+        "noBarrelFile": "error",
+        "noReExportAll": "error",
+        "useTopLevelRegex": "warn"
+      },
+      "style": {
+        "noDoneCallback": "warn",
+        "noNamespace": "error",
+        "noNamespaceImport": "error",
+        "noNegationElse": "warn",
+        "noShoutyConstants": "error",
+        "noUnusedTemplateLiteral": "warn",
+        "noYodaExpression": "warn",
+        "useBlockStatements": "warn",
+        "useCollapsedElseIf": "warn",
+        "useConsistentArrayType": {
+          "level": "warn",
+          "options": {
+            "syntax": "shorthand"
+          }
+        },
+        "useConsistentBuiltinInstantiation": "warn",
+        "useDefaultSwitchClause": "warn",
+        "useExplicitLengthCheck": "warn",
+        "useForOf": "warn",
+        "useFragmentSyntax": "warn",
+        "useNodeAssertStrict": "warn",
+        "useShorthandArrayType": "warn",
+        "useShorthandAssign": "warn",
+        "useThrowNewError": "warn",
+        "useThrowOnlyError": "error"
+      },
+      "suspicious": {
+        "noConsole": "warn",
+        "noEmptyBlockStatements": "warn",
+        "noEvolvingTypes": "warn",
+        "noMisplacedAssertion": "warn",
+        "noSkippedTests": "warn",
+        "useAwait": "warn",
+        "useErrorMessage": "error",
+        "useNumberToFixedDigitsArgument": "error"
+      }
+    }
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 80,
+    "attributePosition": "auto",
+    "lineEnding": "lf"
+  },
+  "javascript": {
+    "formatter": {
+      "quoteStyle": "single",
+      "arrowParentheses": "always",
+      "bracketSameLine": false,
+      "bracketSpacing": true,
+      "jsxQuoteStyle": "double",
+      "quoteProperties": "asNeeded",
+      "semicolons": "asNeeded",
+      "trailingCommas": "es5"
+    }
+  }
+}
