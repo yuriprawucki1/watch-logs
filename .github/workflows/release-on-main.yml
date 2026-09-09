@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
 
           api="${API_URL}/repos/${REPOSITORY}"
-          auth_header="$(printf 'Authorization: %s %s' 'Bearer' "${GITHUB_TOKEN}")"
+          auth_header="$(printf '%s: %s %s' 'Authorization' 'Bearer' "${GITHUB_TOKEN}")"
           accept_header="Accept: application/vnd.github+json"
 
           get_json() {
