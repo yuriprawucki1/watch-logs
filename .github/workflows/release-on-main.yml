@@ -104,8 +104,8 @@ jobs:
             release_status="$(status_code "${api}/releases/tags/${tag}")"
             if [ "${release_status}" = "200" ] && [ "${tagged_sha}" = "${release_sha}" ]; then
               release_json="$(get_json "${api}/releases/tags/${tag}")"
-              jq -e --arg tag "${tag}" \
-                '.tag_name == $tag and .draft == false and .prerelease == false' \
+              jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+                '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
                 <<<"${release_json}" >/dev/null
               echo "Release ${tag} already exists for the delivered commit."
               exit 0
@@ -169,9 +169,14 @@ jobs:
             -H 'Content-Type: application/json' \
             --data "${payload}" \
             "${api}/releases")"
-          jq -e --arg tag "${tag}" \
-            '.tag_name == $tag and .draft == false and .prerelease == false' \
+          jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+            '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
             <<<"${created_release}" >/dev/null
+
+          verified_release="$(get_json "${api}/releases/tags/${tag}")"
+          jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+            '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
+            <<<"${verified_release}" >/dev/null
 
           tagged_sha="$(resolve_tag_commit)"
           if [ "${tagged_sha}" != "${release_sha}" ]; then
