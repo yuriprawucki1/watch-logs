@@ -6,6 +6,8 @@ import { fetchLogs } from '@/services/fetchLogs'
 import { register } from '@/services/registerLogs'
 import type { BaseLog } from '@/types/BaseLog'
 import type { LogType } from '@/types/LogType'
+import { GraylogError } from '@/utils/GraylogError'
+import { parseBasicAuth } from '@/utils/basicAuth'
 import { getLogTypeConfig } from '@/utils/logTypeConfig'
 import { type Request, type Response, Router } from 'express'
 import { ZodError } from 'zod'
@@ -69,9 +71,17 @@ router.post('/logs/:logType', async (req: Request, res: Response) => {
       handleZodError(error, res)
       return
     }
-    res.status(error.statusCode || 500).json({
+    if (error instanceof GraylogError) {
+      res.status(error.statusCode).json({
+        errors: {
+          message: error.message,
+        },
+      })
+      return
+    }
+    res.status(500).json({
       errors: {
-        message: error.message,
+        message: 'Internal Server Error',
       },
     })
   }
@@ -90,13 +100,10 @@ router.get('/logs/:logType', async (req: Request, res: Response) => {
       string
     >
     const { authorization } = headerSchema.parse(req.headers)
-    const [username, password] = Buffer.from(
-      authorization.split(' ')[1],
-      'base64'
-    )
-      .toString('utf-8')
-      .split(':')
-    const auth = { username, password }
+    const auth = parseBasicAuth(authorization)
+    if (!auth) {
+      throw new GraylogError(400, 'Invalid authentication credentials')
+    }
     const logs = await fetchLogs({
       auth,
       query: input as string,
@@ -113,9 +120,17 @@ router.get('/logs/:logType', async (req: Request, res: Response) => {
       handleZodError(error, res)
       return
     }
-    res.status(error.statusCode || 500).json({
+    if (error instanceof GraylogError) {
+      res.status(error.statusCode).json({
+        errors: {
+          message: error.message,
+        },
+      })
+      return
+    }
+    res.status(500).json({
       errors: {
-        message: error.message,
+        message: 'Internal Server Error',
       },
     })
   }

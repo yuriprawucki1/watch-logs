@@ -31,10 +31,14 @@ export const register = async (
       headers: {
         'Content-Type': 'application/json',
       },
+      maxBodyLength: 1024 * 1024,
+      maxContentLength: 64 * 1024,
+      maxRedirects: 0,
+      timeout: 10_000,
     })
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      throw new GraylogError(error.response.status, error.response.data)
+      throw new GraylogError(error.response.status, 'Graylog request failed')
     }
     throw new GraylogError(500, 'Internal Server Error')
   }

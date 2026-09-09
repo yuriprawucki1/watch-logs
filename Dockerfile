@@ -1,10 +1,11 @@
 # Build stage
-FROM public.ecr.aws/docker/library/node:22.12-slim AS builder
+FROM public.ecr.aws/docker/library/node:22.12-slim@sha256:35531c52ce27b6575d69755c73e65d4468dba93a25644eed56dc12879cae9213 AS builder
 
 # Instalar tzdata e configurar timezone
-RUN apt-get update && apt-get install -y tzdata && \
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -12,11 +13,8 @@ WORKDIR /app
 COPY package*.json ./
 COPY tsconfig.json ./
 
-# Atualizar npm para a versão mais recente
-RUN npm install -g npm@latest
-
-# Instalar dependências
-RUN npm install --no-package-lock
+# Instalar exatamente o lockfile, sem scripts de instalação
+RUN npm ci --include=dev --ignore-scripts --no-audit
 
 # Copiar código fonte
 COPY src/ ./src/
@@ -25,12 +23,12 @@ COPY src/ ./src/
 RUN npm run build
 
 # Production stage
-FROM public.ecr.aws/docker/library/node:22.12-slim
-
+FROM public.ecr.aws/docker/library/node:22.12-slim@sha256:35531c52ce27b6575d69755c73e65d4468dba93a25644eed56dc12879cae9213
 # Instalar tzdata e configurar timezone
-RUN apt-get update && apt-get install -y tzdata && \
+RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \
-    dpkg-reconfigure --frontend noninteractive tzdata
+    dpkg-reconfigure --frontend noninteractive tzdata && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -38,14 +36,10 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/package*.json ./
 
-# Atualizar npm para a versão mais recente
-RUN npm install -g npm@latest
-
-# Instalar apenas dependências de produção
-RUN npm install --omit=dev --no-package-lock --ignore-scripts
+# Instalar apenas dependências de produção do lockfile, sem scripts
+RUN npm ci --omit=dev --ignore-scripts --no-audit
 
 # Exposição da porta
 EXPOSE 3000
 
-# Comando para iniciar a aplicação
 CMD ["npm", "start"]

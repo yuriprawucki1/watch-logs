@@ -1,10 +1,25 @@
 import { log } from '@/utils/console'
-import express from 'express'
+import express, { type ErrorRequestHandler } from 'express'
 import router from './routes'
 
-const app = express()
-app.use(express.json())
+export const app = express()
+app.use(express.json({ limit: '100kb' }))
 app.use(router)
+
+const requestErrorHandler: ErrorRequestHandler = (
+  _error,
+  _request,
+  response,
+  _next
+) => {
+  response.status(400).json({
+    errors: {
+      message: 'Invalid request',
+    },
+  })
+}
+
+app.use(requestErrorHandler)
 
 export const startServer = async (port: string): Promise<void> => {
   try {
