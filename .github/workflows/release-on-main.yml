@@ -28,7 +28,7 @@ jobs:
           set -euo pipefail
 
           api="${API_URL}/repos/${REPOSITORY}"
-          auth_header="Authorization: Bearer ${GITHUB_TOKEN}"
+          auth_header="$(printf 'Authorization: %s %s' 'Bearer' "${GITHUB_TOKEN}")"
           accept_header="Accept: application/vnd.github+json"
 
           get_json() {
@@ -42,19 +42,21 @@ jobs:
           }
 
           resolve_tag_commit() {
-            local tag_ref tag_type tagged_sha tag_object
+            local tag_ref tag_type tagged_sha tag_object object_type
             tag_ref="$(get_json "${api}/git/ref/tags/${tag}")"
             tag_type="$(jq -er '.object.type' <<<"${tag_ref}")"
             tagged_sha="$(jq -er '.object.sha' <<<"${tag_ref}")"
-            if [ "${tag_type}" = "tag" ]; then
-              tag_object="$(get_json "${api}/git/tags/${tagged_sha}")"
-              tag_type="$(jq -er '.object.type' <<<"${tag_object}")"
-              tagged_sha="$(jq -er '.object.sha' <<<"${tag_object}")"
-            fi
-            if [ "${tag_type}" != "commit" ]; then
-              echo "Tag ${tag} does not resolve to a commit." >&2
+            if [ "${tag_type}" != "tag" ]; then
+              echo "Tag ${tag} is not annotated." >&2
               return 1
             fi
+            tag_object="$(get_json "${api}/git/tags/${tagged_sha}")"
+            object_type="$(jq -er '.object.type' <<<"${tag_object}")"
+            if [ "${object_type}" != "commit" ]; then
+              echo "Annotated tag ${tag} does not resolve to a commit." >&2
+              return 1
+            fi
+            tagged_sha="$(jq -er '.object.sha' <<<"${tag_object}")"
             printf '%s' "${tagged_sha}"
           }
 
@@ -130,6 +132,32 @@ jobs:
             '' \
             '### Residual risk' \
             '- This project is release-only; deploy, production health, and rollback are not applicable.')"
+          tag_object_payload="$(jq -n \
+            --arg tag "${tag}" \
+            --arg message "${body}" \
+            --arg sha "${release_sha}" \
+            '{tag: $tag, message: $message, object: $sha, type: "commit"}')"
+          tag_object="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST \
+            -H "${auth_header}" -H "${accept_header}" \
+            -H 'Content-Type: application/json' \
+            --data "${tag_object_payload}" \
+            "${api}/git/tags")"
+          tag_object_sha="$(jq -er '.sha' <<<"${tag_object}")"
+          ref_payload="$(jq -n \
+            --arg ref "refs/tags/${tag}" \
+            --arg sha "${tag_object_sha}" \
+            '{ref: $ref, sha: $sha}')"
+          created_ref="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST \
+            -H "${auth_header}" -H "${accept_header}" \
+            -H 'Content-Type: application/json' \
+            --data "${ref_payload}" \
+            "${api}/git/refs")"
+          jq -e --arg ref "refs/tags/${tag}" --arg sha "${tag_object_sha}" \
+            '.ref == $ref and .object.type == "tag" and .object.sha == $sha' \
+            <<<"${created_ref}" >/dev/null
+
           payload="$(jq -n \
             --arg tag "${tag}" \
             --arg sha "${release_sha}" \
