@@ -125,11 +125,11 @@ jobs:
             '- Added automated regression tests and a non-mutating lint command.' \
             '' \
             '### Verification' \
-            '- npm audit: 0 findings; Grype lockfile: 0 matches.' \
+            '- npm audit: 0 findings; Grype lockfile and installed tree: 0 matches.' \
             '- Tests, lint, typecheck, build, and smoke checks passed locally.' \
             '' \
             '### Residual risk' \
-            '- Grype still reports dev/build-only Go stdlib findings in the embedded esbuild binary.')"
+            '- This project is release-only; deploy, production health, and rollback are not applicable.')"
           payload="$(jq -n \
             --arg tag "${tag}" \
             --arg sha "${release_sha}" \
