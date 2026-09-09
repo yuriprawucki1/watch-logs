@@ -30,12 +30,12 @@ npm run start
 
 Docker:
 ```command
-docker build -t watch-logs:1.0.0 .
+docker build -t watch-logs:1.0.1 .
 docker run --name watch-logs \
   --env NODE_ENV=production \
   --env PORT=3000 \
   --env GRAYLOG_HOST=graylog.exemplo.com.br \
-  watch-logs:1.0.0
+  watch-logs:1.0.1
 ```
 
 > ###### Para utilizar o método GET é necessário enviar um token de autorização do tipo Basic com a senha `token`, como se fosse utilizar o próprio Graylog pois de forma padrão ele funciona assim. Inclusive a geração ou revogação desses tokens fica no prórpio Graylog. Este middleware apenas repassa essa informação.
@@ -53,7 +53,7 @@ GET /logs/${logType}
 ```
 
 | Parâmetro | Tipo    | Exemplo         | Descrição                              |
-| :-------- | :------ | :-------------- | :------------------------------------- |
+| :-------- | :------ | :------- | :------------------------------------- |
 | `logType` | `string`| erp_homologation | **Obrigatório**. O input que você quer.|
 
 #### Retorna logs de uma faixa temporal de um input
@@ -63,7 +63,7 @@ GET /logs/${logType}?from=${from}&to=${to}
 ```
 
 | Parâmetro | Tipo      | Exemplo                | Descrição                    |
-| :-------- | :-------- | :--------------------- | :--------------------------- |
+| :-------- | :-------- | :--------------------- | :-------------- |
 | `from`    | `datetime`| 2024-12-12T21:03:58.340Z| A data, hora e segundo inicial.|
 | `to`      | `datetime`| 2024-12-12T21:04:51.320Z| A data, hora e segundo final. |
 
@@ -84,7 +84,7 @@ GET /logs/${logType}?${field}=${value}
 ```
 
 | Parâmetro | Tipo    | Exemplo | Descrição       |
-| :-------- | :------ | :------ | :-------------- |
+| :-------- | :------ | :------- | :-------------- |
 | `field`   | `string`| trace_id| Campo do log.   |
 | `value`   | `any`   | 1234    | Valor do campo. |
 

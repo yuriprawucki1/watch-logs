@@ -1,6 +1,7 @@
 import { env } from '@/constants/env'
 import type { GraylogMessage, GraylogResponse } from '@/types/GraylogResponse'
 import { GraylogError } from '@/utils/GraylogError'
+import { buildGraylogQuery } from '@/utils/graylogQuery'
 import axios from 'axios'
 
 const grayLogHost = env.GRAYLOG_HOST
@@ -27,12 +28,7 @@ export const fetchLogs = async (data: {
   fields?: { [key: string]: string }
 }): Promise<Record<string, unknown>[]> => {
   const { auth, query, from, to, range, fields } = data
-  let finalQuery = query
-  if (fields) {
-    for (const [field, fieldValue] of Object.entries(fields)) {
-      finalQuery += ` AND ${field}:${fieldValue}`
-    }
-  }
+  const finalQuery = buildGraylogQuery(query, fields)
   const params = new URLSearchParams({
     query: finalQuery,
     ...(from && { from }),
@@ -49,6 +45,10 @@ export const fetchLogs = async (data: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
       },
+      maxContentLength: 1024 * 1024,
+      maxBodyLength: 1024 * 1024,
+      maxRedirects: 0,
+      timeout: 10_000,
     })
     return response.data.messages.map(({ message }: GraylogMessage) => {
       const filteredMessage = Object.fromEntries(
@@ -60,7 +60,7 @@ export const fetchLogs = async (data: {
     })
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
-      throw new GraylogError(error.response.status, error.response.statusText)
+      throw new GraylogError(error.response.status, 'Graylog request failed')
     }
     throw new GraylogError(500, 'Internal Server Error')
   }

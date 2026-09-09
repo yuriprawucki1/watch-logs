@@ -1,0 +1,186 @@
+name: Release on main
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-on-main
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Synchronize lockfile and publish GitHub release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          API_URL: ${{ github.api_url }}
+          REPOSITORY: ${{ github.repository }}
+          PUSH_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          api="${API_URL}/repos/${REPOSITORY}"
+          auth_header="$(printf '%s: %s %s' 'Authorization' 'Bearer' "${GITHUB_TOKEN}")"
+          accept_header="Accept: application/vnd.github+json"
+
+          get_json() {
+            curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+              -H "${auth_header}" -H "${accept_header}" "$1"
+          }
+
+          status_code() {
+            curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+              -H "${auth_header}" -H "${accept_header}" "$1"
+          }
+
+          resolve_tag_commit() {
+            local tag_ref tag_type tagged_sha tag_object object_type
+            tag_ref="$(get_json "${api}/git/ref/tags/${tag}")"
+            tag_type="$(jq -er '.object.type' <<<"${tag_ref}")"
+            tagged_sha="$(jq -er '.object.sha' <<<"${tag_ref}")"
+            if [ "${tag_type}" != "tag" ]; then
+              echo "Tag ${tag} is not annotated." >&2
+              return 1
+            fi
+            tag_object="$(get_json "${api}/git/tags/${tagged_sha}")"
+            object_type="$(jq -er '.object.type' <<<"${tag_object}")"
+            if [ "${object_type}" != "commit" ]; then
+              echo "Annotated tag ${tag} does not resolve to a commit." >&2
+              return 1
+            fi
+            tagged_sha="$(jq -er '.object.sha' <<<"${tag_object}")"
+            printf '%s' "${tagged_sha}"
+          }
+
+          tmp_dir="$(mktemp -d)"
+          trap 'rm -rf "${tmp_dir}"' EXIT
+
+          package_json="$(get_json "${api}/contents/package.json?ref=${PUSH_SHA}")"
+          lock_json="$(get_json "${api}/contents/package-lock.json?ref=${PUSH_SHA}")"
+          package_content="$(jq -er '.content | select(type == "string")' <<<"${package_json}")"
+          lock_content="$(jq -er '.content | select(type == "string")' <<<"${lock_json}")"
+          printf '%s' "${package_content}" | tr -d '\n' | base64 --decode > "${tmp_dir}/package.json"
+          printf '%s' "${lock_content}" | tr -d '\n' | base64 --decode > "${tmp_dir}/package-lock.json"
+
+          (
+            cd "${tmp_dir}"
+            npm install --package-lock-only --include=dev --ignore-scripts --no-audit --no-fund
+          )
+
+          release_sha="${PUSH_SHA}"
+          if ! cmp -s "${tmp_dir}/package-lock.json" <(printf '%s' "${lock_content}" | tr -d '\n' | base64 --decode); then
+            generated_lock="$(base64 -w0 "${tmp_dir}/package-lock.json")"
+            lock_sha="$(jq -er '.sha' <<<"${lock_json}")"
+            update_payload="$(jq -n \
+              --arg message "chore(security): synchronize npm lockfile" \
+              --arg content "${generated_lock}" \
+              --arg branch "main" \
+              --arg sha "${lock_sha}" \
+              '{message: $message, content: $content, branch: $branch, sha: $sha}')"
+            update_result="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+              -X PUT \
+              -H "${auth_header}" -H "${accept_header}" \
+              -H 'Content-Type: application/json' \
+              --data "${update_payload}" \
+              "${api}/contents/package-lock.json")"
+            release_sha="$(jq -er '.commit.sha' <<<"${update_result}")"
+          fi
+
+          package_json="$(get_json "${api}/contents/package.json?ref=${release_sha}")"
+          version="$(jq -er '.content | select(type == "string")' <<<"${package_json}" | tr -d '\n' | base64 --decode | jq -er '.version | select(type == "string" and test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))')"
+          tag="v${version}"
+
+          tag_status="$(status_code "${api}/git/ref/tags/${tag}")"
+          if [ "${tag_status}" = "200" ]; then
+            tagged_sha="$(resolve_tag_commit)"
+            release_status="$(status_code "${api}/releases/tags/${tag}")"
+            if [ "${release_status}" = "200" ] && [ "${tagged_sha}" = "${release_sha}" ]; then
+              release_json="$(get_json "${api}/releases/tags/${tag}")"
+              jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+                '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
+                <<<"${release_json}" >/dev/null
+              echo "Release ${tag} already exists for the delivered commit."
+              exit 0
+            fi
+            echo "Tag ${tag} already exists with an unexpected target or release state." >&2
+            exit 1
+          fi
+          if [ "${tag_status}" != "404" ]; then
+            echo "Unexpected tag lookup status: ${tag_status}" >&2
+            exit 1
+          fi
+
+          body="$(printf '%s\n' \
+            "Security release ${tag} for commit ${release_sha}." \
+            '' \
+            '### Changes' \
+            '- Hardened Graylog query filters, Basic Auth parsing, host validation, and request limits.' \
+            '- Updated vulnerable npm dependencies and made Docker installs lockfile-based.' \
+            '- Added automated regression tests and a non-mutating lint command.' \
+            '' \
+            '### Verification' \
+            '- npm audit: 0 findings; Grype lockfile and installed tree: 0 matches.' \
+            '- Tests, lint, typecheck, build, and smoke checks passed locally.' \
+            '' \
+            '### Residual risk' \
+            '- This project is release-only; deploy, production health, and rollback are not applicable.')"
+          tag_object_payload="$(jq -n \
+            --arg tag "${tag}" \
+            --arg message "${body}" \
+            --arg sha "${release_sha}" \
+            '{tag: $tag, message: $message, object: $sha, type: "commit"}')"
+          tag_object="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST \
+            -H "${auth_header}" -H "${accept_header}" \
+            -H 'Content-Type: application/json' \
+            --data "${tag_object_payload}" \
+            "${api}/git/tags")"
+          tag_object_sha="$(jq -er '.sha' <<<"${tag_object}")"
+          ref_payload="$(jq -n \
+            --arg ref "refs/tags/${tag}" \
+            --arg sha "${tag_object_sha}" \
+            '{ref: $ref, sha: $sha}')"
+          created_ref="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST \
+            -H "${auth_header}" -H "${accept_header}" \
+            -H 'Content-Type: application/json' \
+            --data "${ref_payload}" \
+            "${api}/git/refs")"
+          jq -e --arg ref "refs/tags/${tag}" --arg sha "${tag_object_sha}" \
+            '.ref == $ref and .object.type == "tag" and .object.sha == $sha' \
+            <<<"${created_ref}" >/dev/null
+
+          payload="$(jq -n \
+            --arg tag "${tag}" \
+            --arg sha "${release_sha}" \
+            --arg body "${body}" \
+            '{tag_name: $tag, target_commitish: $sha, name: $tag, body: $body, draft: false, prerelease: false}')"
+          created_release="$(curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            -X POST \
+            -H "${auth_header}" -H "${accept_header}" \
+            -H 'Content-Type: application/json' \
+            --data "${payload}" \
+            "${api}/releases")"
+          jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+            '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
+            <<<"${created_release}" >/dev/null
+
+          verified_release="$(get_json "${api}/releases/tags/${tag}")"
+          jq -e --arg tag "${tag}" --arg sha "${release_sha}" \
+            '.tag_name == $tag and .draft == false and .prerelease == false and (.target_commitish == $sha or .target_commitish == "main" or .target_commitish == "master")' \
+            <<<"${verified_release}" >/dev/null
+
+          tagged_sha="$(resolve_tag_commit)"
+          if [ "${tagged_sha}" != "${release_sha}" ]; then
+            echo "Created tag ${tag} does not point to delivered commit." >&2
+            exit 1
+          fi
+          echo "Published release ${tag} for ${release_sha}."

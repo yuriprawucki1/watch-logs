@@ -1,12 +1,14 @@
 {
   "name": "watch-logs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "main": "src/index.ts",
   "scripts": {
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "lint": "biome check --write src",
+    "lint": "biome check src tests",
+    "typecheck": "tsc --noEmit",
     "build": "tsup src/index.ts --minify",
+    "test": "tsx --test tests/*.test.ts",
     "prepare": "husky"
   },
   "author": "Yuri Prawucki",
@@ -17,10 +19,11 @@
     "@commitlint/cli": "^19.6.0",
     "@commitlint/config-conventional": "^19.6.0",
     "@types/express": "^5.0.0",
+    "esbuild": "0.28.2",
     "cz-conventional-changelog": "^3.3.0",
     "husky": "^9.1.7",
     "tsup": "^8.3.5",
-    "tsx": "^4.19.2",
+    "tsx": "4.23.13",
     "typescript": "^5.6.3"
   },
   "config": {
@@ -29,9 +32,17 @@
     }
   },
   "dependencies": {
-    "axios": "^1.7.9",
+    "axios": "1.18.0",
     "dotenv": "^16.4.7",
-    "express": "^4.21.1",
+    "express": "^4.22.2",
     "zod": "^3.23.8"
+  },
+  "overrides": {
+    "body-parser": "1.20.6",
+    "form-data": "4.0.6",
+    "follow-redirects": "1.16.0",
+    "path-to-regexp": "0.1.13",
+    "qs": "6.16.0",
+    "esbuild": "0.28.2"
   }
 }
