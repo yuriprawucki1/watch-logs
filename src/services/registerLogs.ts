@@ -1,4 +1,5 @@
 import { env } from '@/constants/env'
+import { buildLogEntry } from '@/services/buildLogEntry'
 import type { BaseLog } from '@/types/BaseLog'
 import { GraylogError } from '@/utils/GraylogError'
 import axios from 'axios'
@@ -9,22 +10,7 @@ export const register = async (
   data: BaseLog,
   endpoint: string
 ): Promise<void> => {
-  const {
-    host,
-    short_message,
-    full_message,
-    level,
-    additional_fields,
-    ...rest
-  } = data
-  const logEntry: BaseLog = {
-    host,
-    short_message,
-    full_message,
-    level,
-    ...rest,
-    ...additional_fields,
-  }
+  const logEntry = buildLogEntry(data)
   const graylogUrl = `http://${graylogHost}:${endpoint}/gelf`
   try {
     await axios.post(graylogUrl, logEntry, {
