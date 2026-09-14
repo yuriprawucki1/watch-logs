@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildLogEntry } from '@/services/registerLogs'
+import { buildLogEntry } from '@/services/buildLogEntry'
 import { parseBasicAuth } from '@/utils/basicAuth'
 import { buildGraylogQuery } from '@/utils/graylogQuery'
 import { isValidHostname } from '@/utils/hostname'
@@ -16,11 +16,17 @@ test('does not let additional fields overwrite GELF metadata', () => {
       short_message: 'spoofed-message',
       full_message: 'spoofed-full-message',
       level: 1,
+      version: '9.9',
+      timestamp: 'spoofed-timestamp',
+      facility: 'spoofed-facility',
+      line: 999,
+      file: 'spoofed-file',
       source: 'application',
     },
   })
 
   assert.deepEqual(logEntry, {
+    version: '1.1',
     host: 'trusted-host',
     short_message: 'trusted-message',
     full_message: 'trusted-full-message',
