@@ -1,8 +1,33 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { buildLogEntry } from '@/services/registerLogs'
 import { parseBasicAuth } from '@/utils/basicAuth'
 import { buildGraylogQuery } from '@/utils/graylogQuery'
 import { isValidHostname } from '@/utils/hostname'
+
+test('does not let additional fields overwrite GELF metadata', () => {
+  const logEntry = buildLogEntry({
+    host: 'trusted-host',
+    short_message: 'trusted-message',
+    full_message: 'trusted-full-message',
+    level: 6,
+    additional_fields: {
+      host: 'spoofed-host',
+      short_message: 'spoofed-message',
+      full_message: 'spoofed-full-message',
+      level: 1,
+      source: 'application',
+    },
+  })
+
+  assert.deepEqual(logEntry, {
+    host: 'trusted-host',
+    short_message: 'trusted-message',
+    full_message: 'trusted-full-message',
+    level: 6,
+    source: 'application',
+  })
+})
 
 test('parses Basic Auth passwords containing a colon', () => {
   const token = Buffer.from('graylog-user:secret:with:colons').toString(
