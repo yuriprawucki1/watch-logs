@@ -21,37 +21,26 @@ jobs:
       - name: Re-resolve and commit package lockfile
         env:
           GITHUB_TOKEN: ${{ github.token }}
-          API_URL: ${{ github.api_url }}
           REPOSITORY: ${{ github.repository }}
           REF: ${{ github.ref_name }}
         shell: bash
         run: |
           set -euo pipefail
-          api="${API_URL}/repos/${REPOSITORY}"
-          auth="Authorization: Bearer ${GITHUB_TOKEN}"
-          accept="Accept: application/vnd.github+json"
           tmp="$(mktemp -d)"
           trap 'rm -rf "${tmp}"' EXIT
-          get_json() {
-            curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
-              -H "${auth}" -H "${accept}" "$1"
-          }
-          package_json="$(get_json "${api}/contents/package.json?ref=${REF}")"
-          lock_json="$(get_json "${api}/contents/package-lock.json?ref=${REF}")"
-          jq -er '.content | select(type == "string")' <<<"${package_json}" | tr -d '\n' | base64 --decode > "${tmp}/package.json"
-          jq -er '.content | select(type == "string")' <<<"${lock_json}" | tr -d '\n' | base64 --decode > "${tmp}/package-lock.json"
-          (
-            cd "${tmp}"
-            npm update --package-lock-only --include=dev --ignore-scripts --no-audit --no-fund
-          )
-          if cmp -s "${tmp}/package-lock.json" <(jq -er '.content | select(type == "string")' <<<"${lock_json}" | tr -d '\n' | base64 --decode); then
+          cd "${tmp}"
+          git init --quiet
+          git remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${REPOSITORY}.git"
+          git fetch --quiet --depth=1 origin "refs/heads/${REF}"
+          git checkout --quiet FETCH_HEAD
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          npm update --package-lock-only --include=dev --ignore-scripts --no-audit --no-fund
+          if git diff --quiet -- package-lock.json; then
             echo "Lockfile already synchronized."
             exit 0
           fi
-          content="$(base64 -w0 "${tmp}/package-lock.json")"
-          sha="$(jq -er '.sha' <<<"${lock_json}")"
-          payload="$(jq -n --arg message "fix(security): refresh npm lockfile" --arg content "${content}" --arg branch "${REF}" --arg sha "${sha}" '{message: $message, content: $content, branch: $branch, sha: $sha}')"
-          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
-            -X PUT -H "${auth}" -H "${accept}" -H 'Content-Type: application/json' \
-            --data "${payload}" "${api}/contents/package-lock.json" >/dev/null
+          git add package-lock.json
+          git commit --quiet -m 'fix(security): refresh npm lockfile'
+          git push --quiet origin "HEAD:refs/heads/${REF}"
           echo "Updated package-lock.json on ${REF}."
