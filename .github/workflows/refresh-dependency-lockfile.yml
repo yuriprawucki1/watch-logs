@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - name: Regenerate and commit package lockfile
+      - name: Re-resolve and commit package lockfile
         env:
           GITHUB_TOKEN: ${{ github.token }}
           API_URL: ${{ github.api_url }}
@@ -42,7 +42,7 @@ jobs:
           jq -er '.content | select(type == "string")' <<<"${lock_json}" | tr -d '\n' | base64 --decode > "${tmp}/package-lock.json"
           (
             cd "${tmp}"
-            npm install --package-lock-only --include=dev --ignore-scripts --no-audit --no-fund
+            npm update --package-lock-only --include=dev --ignore-scripts --no-audit --no-fund
           )
           if cmp -s "${tmp}/package-lock.json" <(jq -er '.content | select(type == "string")' <<<"${lock_json}" | tr -d '\n' | base64 --decode); then
             echo "Lockfile already synchronized."
