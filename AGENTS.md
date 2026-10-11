@@ -17,8 +17,9 @@ Zod e os consulta ou envia ao Graylog. A documentação de uso está em
 - `src/utils` contém validações e transformações compartilhadas.
 - `tests` contém testes automatizados; hoje há cobertura de segurança em
   `tests/security.test.ts`.
-- `.github/workflows/release-on-main.yml` cria tags e releases quando há push
-  para `main`.
+- `.github/workflows/release-on-main.yml` valida pull requests e pushes para
+  `main`; publica uma release para uma nova versão e permite recuperar uma
+  publicação interrompida por execução manual em `main`.
 
 ## Desenvolvimento e verificações
 
