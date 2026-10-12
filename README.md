@@ -1,157 +1,266 @@
-## Watch logs
+# watch-logs
 
-É um software criado para ser um middleware entre aplicações e o [Graylog](https://graylog.org/), tratando e validando as entradas e saídas.
-Construído com [Express](https://expressjs.com/), [Typescript](https://www.typescriptlang.org/) e [Zod](https://zod.dev/) para schemas de validação.
+[![Validação e release](https://github.com/yuriprawucki1/watch-logs/actions/workflows/release-on-main.yml/badge.svg?branch=main)](https://github.com/yuriprawucki1/watch-logs/actions/workflows/release-on-main.yml)
 
-### Utilização
+Middleware HTTP para integrar aplicações ao [Graylog](https://graylog.org/).
+Desenvolvido com Express e Zod, valida logs, encaminha-os a inputs GELF HTTP e
+consulta mensagens por tipo de log.
 
-###### Para executar esse projeto você precisa das seguintes variáveis, ou no ambiente ou no `.env` na raiz do projeto:
+## Recursos
 
-| Nome | Tipo    | Valor Padrão | Valores permitidos         | Descrição                              |
-| :-------- | :------ | :------- | :-------------- | :------------------------------------- |
-| `NODE_ENV` | `string`| `development` | `development`/`production` | **Obrigatório**.|
-| `PORT` | `string`| `3000` |  | **Obrigatório**. Porta para este projeto executar.|
-| `GRAYLOG_HOST` | `string`|  |  | **Obrigatório**. Apenas o nome, ou FQDN, do Graylog.|
+- Recebe logs de aplicações ERP e de sistema em homologação ou produção.
+- Valida o tipo de log e os campos do payload antes do envio.
+- Consulta mensagens no input correspondente, com filtros de campo e período.
+- Encaminha logs ao Graylog por inputs GELF HTTP.
 
-#### Modos de execução:
+## Requisitos
 
-Desenvolvimento:
-```command
-npm install
+- Node.js 22 e npm; ou Docker para executar o container.
+- Acesso de rede ao servidor Graylog.
+- Quatro inputs GELF HTTP no Graylog, um para cada tipo de log.
+
+## Configuração
+
+Defina as variáveis de ambiente antes de iniciar o serviço. Elas também podem
+ser colocadas em um arquivo `.env` na raiz do projeto.
+
+| Variável | Obrigatória | Padrão | Descrição |
+| --- | --- | --- | --- |
+| `NODE_ENV` | Não | `development` | Ambiente da aplicação: `development` ou `production`. |
+| `PORT` | Não | `3000` | Porta HTTP local, de `1` a `65535`. |
+| `GRAYLOG_HOST` | Sim | — | Hostname ou FQDN do Graylog, sem protocolo ou porta. |
+
+Exemplo de `.env`:
+
+```dotenv
+NODE_ENV=development
+PORT=3000
+GRAYLOG_HOST=graylog.exemplo.com.br
+```
+
+O serviço usa a porta `9000` do Graylog para consultas e as portas GELF
+indicadas na tabela abaixo para envio. Os destinos e identificadores de input
+estão definidos em `src/utils/logTypeConfig.ts`; ajuste esse mapeamento se os
+inputs do seu Graylog forem diferentes.
+
+| `logType` | Tipo de log | Porta GELF HTTP |
+| --- | --- | ---: |
+| `erp_homologation` | ERP em homologação | `12201` |
+| `erp_production` | ERP em produção | `12202` |
+| `system_homologation` | Sistema em homologação | `12203` |
+| `system_production` | Sistema em produção | `12204` |
+
+## Executar localmente
+
+Instale as dependências travadas pelo lockfile e inicie o servidor:
+
+```bash
+npm ci
 npm run dev
 ```
 
-Produção:
-```command
-npm install
+Para executar a versão compilada:
+
+```bash
+npm ci
 npm run build
-npm run start
+npm start
 ```
 
-Docker:
-```command
-docker build -t watch-logs:1.0.1 .
-docker run --name watch-logs \
-  --env NODE_ENV=production \
-  --env PORT=3000 \
-  --env GRAYLOG_HOST=graylog.exemplo.com.br \
-  watch-logs:1.0.1
+Comandos disponíveis:
+
+| Comando | Finalidade |
+| --- | --- |
+| `npm run dev` | Inicia o servidor em modo de desenvolvimento. |
+| `npm run lint` | Verifica o código com Biome. |
+| `npm run typecheck` | Verifica os tipos TypeScript. |
+| `npm test` | Executa os testes com o executor nativo do Node.js. |
+| `npm run build` | Compila a aplicação para `dist`. |
+| `npm start` | Inicia a aplicação compilada. |
+
+## Executar com Docker
+
+```bash
+docker build -t watch-logs:local .
+
+docker run --rm --name watch-logs \
+  -p 3000:3000 \
+  -e NODE_ENV=production \
+  -e PORT=3000 \
+  -e GRAYLOG_HOST=graylog.exemplo.com.br \
+  watch-logs:local
 ```
 
-> ###### Para utilizar o método GET é necessário enviar um token de autorização do tipo Basic com a senha `token`, como se fosse utilizar o próprio Graylog pois de forma padrão ele funciona assim. Inclusive a geração ou revogação desses tokens fica no prórpio Graylog. Este middleware apenas repassa essa informação.
+O container usa Node.js 22.12 e escuta na porta informada por `PORT`.
 
-> ###### `logType` disponíveis:
-> - erp_homologation
-> - erp_production
-> - system_homologation
-> - system_production
+## API
 
-#### Retorna todos os logs de um input
+Todas as rotas usam o prefixo `/logs`. As rotas de envio recebem JSON; as
+consultas retornam JSON.
+
+### Tipos de log
+
+O parâmetro `logType` aceita somente:
+
+```text
+erp_homologation
+erp_production
+system_homologation
+system_production
+```
+
+### Enviar um log
 
 ```http
-GET /logs/${logType}
+POST /logs/{logType}
+Content-Type: application/json
 ```
 
-| Parâmetro | Tipo    | Exemplo         | Descrição                              |
-| :-------- | :------ | :------- | :------------------------------------- |
-| `logType` | `string`| erp_homologation | **Obrigatório**. O input que você quer.|
+O corpo comum a todos os tipos contém:
 
-#### Retorna logs de uma faixa temporal de um input
+| Campo | Tipo | Obrigatório | Limite |
+| --- | --- | --- | --- |
+| `host` | string | Sim | 50 caracteres |
+| `short_message` | string | Sim | 94 caracteres |
+| `level` | inteiro | Sim | De `0` a `7` |
+| `full_message` | string | Sim | 10.000 caracteres |
+| `additional_fields` | objeto | Não | Campos extras do log |
 
-```http
-GET /logs/${logType}?from=${from}&to=${to}
-```
+Os tipos `erp_homologation` e `erp_production` também exigem:
 
-| Parâmetro | Tipo      | Exemplo                | Descrição                    |
-| :-------- | :-------- | :--------------------- | :-------------- |
-| `from`    | `datetime`| 2024-12-12T21:03:58.340Z| A data, hora e segundo inicial.|
-| `to`      | `datetime`| 2024-12-12T21:04:51.320Z| A data, hora e segundo final. |
+| Campo | Tipo | Obrigatório | Limite |
+| --- | --- | --- | --- |
+| `trace_id` | inteiro positivo | Sim | — |
+| `cod_erp` | string | Sim | 10 caracteres |
 
-#### Retorna logs dos últimos X tempo até agora de um input
-
-```http
-GET /logs/${logType}?range=${range}
-```
-
-| Parâmetro | Tipo    | Exemplo | Descrição           |
-| :-------- | :------ | :------ | :------------------ |
-| `range`   | `number`| 300     | Tempo em segundos.  |
-
-#### Retorna logs filtrados por um campo de um input
-
-```http
-GET /logs/${logType}?${field}=${value}
-```
-
-| Parâmetro | Tipo    | Exemplo | Descrição       |
-| :-------- | :------ | :------- | :-------------- |
-| `field`   | `string`| trace_id| Campo do log.   |
-| `value`   | `any`   | 1234    | Valor do campo. |
-
-> Você pode mesclar os filtros de retorno, por exemplo, faixa temporal com campo_a e campo_b.
->> Ao utilizar o filtro de faixa temporal a consulta será tratada como absoluta, ou seja, ignorará o parâmetro range.
->> Ao utilizar o filtro sem faixa temporal a consulta será tratada como relativa, retornando todos os resultados existentes se um range não for informado.
-
-#### Grava logs em um input
-
-```http
-POST /logs/${logType}
-```
-
-| Parâmetro | Tipo    | Exemplo         | Descrição                              |
-| :-------- | :------ | :-------------- | :------------------------------------- |
-| `logType` | `string`| erp_homologation | **Obrigatório**. O input que você quer.|
-
-### Exemplos
-
-###### Query params para `cod_erp` em uma faixa temporal:
-
-```
-https://graylog.exemplo.com.br/logs/erp_homologation?from=2024-12-12T21:03:58.340Z&to=2024-12-12T21:04:51.320Z&cod_erp=0000
-```
-
-###### Payload para `erp_homologation` ou `erp_production`:
+Exemplo para um log ERP:
 
 ```json
 {
-    "host": "origem",
-    "short_message": "mensagem curta e objetiva",
+  "host": "aplicacao-pedidos",
+  "short_message": "Pedido processado",
+  "full_message": "Pedido 12345 processado com sucesso.",
+  "level": 6,
+  "trace_id": 123456789,
+  "cod_erp": "0000",
+  "additional_fields": {
+    "sistema": "web",
+    "modulo": "pedidos"
+  }
+}
+```
+
+Exemplo para um log de sistema:
+
+```json
+{
+  "host": "worker-faturamento",
+  "short_message": "Lote de faturamento concluído",
+  "full_message": "O lote 20261011 foi processado.",
+  "level": 6,
+  "additional_fields": {
+    "modulo": "faturamento",
+    "lote": 20261011
+  }
+}
+```
+
+Campos adicionais devem ficar dentro de `additional_fields`; propriedades
+desconhecidas no nível superior são rejeitadas. Esse objeto não pode substituir
+metadados GELF protegidos, como `version`, `host`, `short_message`,
+`full_message`, `timestamp`, `level`, `facility`, `line` ou `file`. O corpo
+HTTP é limitado a 100 KiB.
+
+Uma requisição válida retorna `201 Created` sem corpo.
+
+### Consultar logs
+
+```http
+GET /logs/{logType}
+Authorization: Basic <credenciais>
+```
+
+Use um token de acesso do Graylog como nome de usuário Basic Auth e o texto
+literal `token` como senha. O token é encaminhado à API do Graylog para
+autenticar a consulta. Gere ou revogue tokens no próprio Graylog; consulte a
+[documentação de tokens da API do Graylog](https://go2docs.graylog.org/current/setting_up_graylog/rest_api_access_tokens.htm).
+
+Exemplo para buscar logs ERP por código e período:
+
+```bash
+export GRAYLOG_API_TOKEN='seu-token-do-graylog'
+
+curl --get 'http://localhost:3000/logs/erp_homologation' \
+  --user "${GRAYLOG_API_TOKEN}:token" \
+  --data-urlencode 'cod_erp=0000' \
+  --data-urlencode 'from=2026-10-11T10:00:00.000Z' \
+  --data-urlencode 'to=2026-10-11T10:30:00.000Z'
+```
+
+Os parâmetros de consulta são:
+
+| Parâmetro | Tipo | Descrição |
+| --- | --- | --- |
+| `from` | data/hora UTC | Início da consulta absoluta, no formato `YYYY-MM-DDTHH:mm:ss.sssZ`. |
+| `to` | data/hora UTC | Fim da consulta absoluta, no mesmo formato de `from`. |
+| `range` | segundos | Janela da consulta relativa. Se omitida, o serviço envia `0` ao Graylog. |
+| `{campo}={valor}` | texto | Filtro por campo da mensagem; pode ser combinado com outros filtros. |
+
+Para uma consulta absoluta, envie `from` e `to` juntos; nesse caso `range` é
+ignorado. Sem o par completo, o serviço usa a consulta relativa. Filtros de
+campo são combinados com `AND`, aceitam nomes no padrão
+`^[A-Za-z_][A-Za-z0-9_.-]*$` e exigem valores não vazios. Os valores são
+escapados antes de compor a consulta do Graylog.
+
+A resposta é uma lista JSON com as mensagens encontradas, sem alguns metadados
+internos do Graylog:
+
+```json
+[
+  {
+    "host": "aplicacao-pedidos",
+    "short_message": "Pedido processado",
+    "full_message": "Pedido 12345 processado com sucesso.",
     "level": 6,
-    "full_message": "mensagem completa e detalhada",
     "trace_id": 123456789,
-    "cod_erp": "0000",
-    "additional_fields": {
-        "sistema": "web",
-        "linha": 10,
-        "credencial_usada": "usuario_impessoal"
-    }
-}
+    "cod_erp": "0000"
+  }
+]
 ```
 
-> Esses campos, com excessão do `additional_fields`, são obrigatórios. Não é permitido enviar qualquer outro campo se ele não estiver dentro de `additional_fields`.
+### Respostas e erros
 
-###### Payload para `system_homologation` ou `system_production`:
+| Status | Situação |
+| --- | --- |
+| `200 OK` | Consulta concluída; retorna uma lista JSON. |
+| `201 Created` | Log recebido e encaminhado ao Graylog; corpo vazio. |
+| `400 Bad Request` | Parâmetros, cabeçalho ou corpo inválido. |
+| `404 Not Found` | Rota base acessada sem um `logType`. |
+| `500 Internal Server Error` | Falha interna ou erro de conexão sem resposta do Graylog. |
 
-```json
-{
-    "host": "origem",
-    "short_message": "mensagem curta e objetiva",
-    "level": 6,
-    "full_message": "mensagem completa e detalhada",
-    "additional_fields": {
-        "modulo": "orchestrator",
-        "role": "viewer",
-        "user_id": 1234
-    }
-}
-```
+Quando o Graylog responde com erro, a API repassa o status HTTP e retorna uma
+mensagem genérica; credenciais e conteúdo do log não são incluídos na resposta.
 
-> Esses campos, com excessão do `additional_fields`, são obrigatórios. Não é permitido enviar qualquer outro campo se ele não estiver dentro de `additional_fields`.
+## Segurança e transporte
 
-### Mantenabilidade
+- A rota `GET` exige Basic Auth e usa o token do Graylog para consultar os logs.
+- A rota `POST` não exige autenticação na aplicação. Restrinja seu acesso à rede
+  confiável ou imponha autenticação em um proxy reverso antes de expô-la.
+- O serviço se conecta ao Graylog por HTTP nas portas `9000` e `12201` a `12204`.
+  Em redes não confiáveis, proteja as conexões com TLS em um proxy ou na camada
+  de rede.
+- Não armazene tokens no repositório nem registre credenciais ou conteúdo
+  sensível dos logs.
 
-Nos arquivos `/src/constants/logType.ts` e `/src/types/LogType.ts` ficam os nomes disponíveis para input.
+## Estrutura do projeto
 
-No arquivo `/src/utils/logTypeConfig.ts` fica o cruzamento entre o nome do input especificado e o endpoint real do Graylog.
+- `src/routes`: rotas HTTP e tradução de erros para respostas.
+- `src/schemas`: validação de ambiente, cabeçalhos, parâmetros e payloads.
+- `src/services`: envio e consulta de logs no Graylog.
+- `src/constants/logType.ts`, `src/types/LogType.ts` e
+  `src/utils/logTypeConfig.ts`: tipos de log e mapeamento para inputs e portas.
+- `src/utils`: validações e transformações compartilhadas.
+- `tests`: testes automatizados.
 
-Os inputs no Graylog precisam ser do tipo `GELF HTTP` porque é o que está especificado em `/src/services/registerLogs.ts`.
+Ao adicionar um tipo de log, atualize a lista, o tipo, os schemas e o mapeamento
+do Graylog. Mantenha esta documentação alinhada aos contratos da API.
