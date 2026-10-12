@@ -30,6 +30,7 @@ app.use(requestErrorHandler)
 const logStartupError = (error: unknown): void => {
   const message = error instanceof Error ? error.message : 'Unknown error'
   log('ERROR', `Server failed to start ${message}`)
+  process.exitCode = 1
 }
 
 export const startServer = (port: string): Server | undefined => {

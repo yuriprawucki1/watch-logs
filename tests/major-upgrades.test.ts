@@ -76,6 +76,7 @@ test('Express 5 preserves route responses and reports listen failures', async ()
 
     // biome-ignore lint/suspicious/noConsole: Capture startup diagnostics in this test.
     const originalConsoleLog = console.log
+    const originalExitCode = process.exitCode
     const loggedMessages: string[] = []
     console.log = (...args: unknown[]): void => {
       loggedMessages.push(args.join(' '))
@@ -95,12 +96,14 @@ test('Express 5 preserves route responses and reports listen failures', async ()
           message.includes('Server failed to start')
         )
       )
+      assert.equal(process.exitCode, 1)
       assert.equal(
         loggedMessages.some((message) => message.includes('Server is running')),
         false
       )
     } finally {
       console.log = originalConsoleLog
+      process.exitCode = originalExitCode
     }
   } finally {
     await new Promise<void>((resolve, reject) => {
