@@ -1,5 +1,11 @@
+import type { Server } from 'node:http'
+import express, {
+  type ErrorRequestHandler,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express'
 import { log } from '@/utils/console'
-import express, { type ErrorRequestHandler } from 'express'
 import router from './routes'
 
 export const app = express()
@@ -7,10 +13,10 @@ app.use(express.json({ limit: '100kb' }))
 app.use(router)
 
 const requestErrorHandler: ErrorRequestHandler = (
-  _error,
-  _request,
-  response,
-  _next
+  _error: unknown,
+  _request: Request,
+  response: Response,
+  _next: NextFunction
 ) => {
   response.status(400).json({
     errors: {
@@ -21,12 +27,24 @@ const requestErrorHandler: ErrorRequestHandler = (
 
 app.use(requestErrorHandler)
 
-export const startServer = async (port: string): Promise<void> => {
+const logStartupError = (error: unknown): void => {
+  const message = error instanceof Error ? error.message : 'Unknown error'
+  log('ERROR', `Server failed to start ${message}`)
+  process.exitCode = 1
+}
+
+export const startServer = (port: string): Server | undefined => {
   try {
-    app.listen(port, () => {
+    return app.listen(port, (error?: Error) => {
+      if (error) {
+        logStartupError(error)
+        return
+      }
+
       log('INFO', `Server is running on port ${port}`)
     })
   } catch (error) {
-    log('ERROR', `Server failed to start ${error.message}`)
+    logStartupError(error)
+    return undefined
   }
 }

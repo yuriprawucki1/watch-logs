@@ -1,6 +1,6 @@
+import { z } from 'zod'
 import { envalidate } from '@/utils/envalidate'
 import { isValidHostname } from '@/utils/hostname'
-import { z } from 'zod'
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production']).default('development'),

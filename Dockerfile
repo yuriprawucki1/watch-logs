@@ -1,5 +1,5 @@
 # Build stage
-FROM public.ecr.aws/docker/library/node:22.12-slim@sha256:35531c52ce27b6575d69755c73e65d4468dba93a25644eed56dc12879cae9213 AS builder
+FROM public.ecr.aws/docker/library/node:24.21.0-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS builder
 
 # Instalar tzdata e configurar timezone
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
@@ -23,7 +23,7 @@ COPY src/ ./src/
 RUN npm run build
 
 # Production stage
-FROM public.ecr.aws/docker/library/node:22.12-slim@sha256:35531c52ce27b6575d69755c73e65d4468dba93a25644eed56dc12879cae9213
+FROM public.ecr.aws/docker/library/node:24.21.0-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20
 # Instalar tzdata e configurar timezone
 RUN apt-get update && apt-get install -y --no-install-recommends tzdata && \
     ln -fs /usr/share/zoneinfo/America/Sao_Paulo /etc/localtime && \

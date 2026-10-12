@@ -1,3 +1,5 @@
+import { type Request, type Response, Router } from 'express'
+import { ZodError } from 'zod'
 import { logTypes } from '@/constants/logType'
 import { headerSchema } from '@/schemas/headerSchema'
 import { paramsSchema } from '@/schemas/paramsSchema'
@@ -6,17 +8,15 @@ import { fetchLogs } from '@/services/fetchLogs'
 import { register } from '@/services/registerLogs'
 import type { BaseLog } from '@/types/BaseLog'
 import type { LogType } from '@/types/LogType'
-import { GraylogError } from '@/utils/GraylogError'
 import { parseBasicAuth } from '@/utils/basicAuth'
+import { GraylogError } from '@/utils/GraylogError'
 import { getLogTypeConfig } from '@/utils/logTypeConfig'
-import { type Request, type Response, Router } from 'express'
-import { ZodError } from 'zod'
 
 const router = Router()
-const params = logTypes as [string, ...string[]]
+const params: typeof logTypes = logTypes
 
 function handleZodError(error: ZodError, res: Response): void {
-  const errors = error.errors.reduce((acc, err) => {
+  const errors = error.issues.reduce((acc, err) => {
     if (err.code === 'unrecognized_keys') {
       return Object.assign(acc, {
         campos_inesperados: err.keys.join(', '),

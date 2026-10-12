@@ -7,17 +7,15 @@ export const querySchema = z
     from: z
       .string()
       .refine((val) => dateRegex.test(val), {
-        message:
-          'Invalid date format, expected format: YYYY-MM-DDTHH:mm:ss.sssZ',
+        error: 'Invalid date format, expected format: YYYY-MM-DDTHH:mm:ss.sssZ',
       })
       .optional(),
     to: z
       .string()
       .refine((val) => dateRegex.test(val), {
-        message:
-          'Invalid date format, expected format: YYYY-MM-DDTHH:mm:ss.sssZ',
+        error: 'Invalid date format, expected format: YYYY-MM-DDTHH:mm:ss.sssZ',
       })
       .optional(),
-    range: z.string().min(1, { message: 'Cannot be empty' }).optional(),
+    range: z.string().min(1, { error: 'Cannot be empty' }).optional(),
   })
-  .catchall(z.string().min(1, { message: 'Cannot be empty' }))
+  .catchall(z.string().min(1, { error: 'Cannot be empty' }))

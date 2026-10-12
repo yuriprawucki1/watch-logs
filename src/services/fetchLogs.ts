@@ -1,10 +1,10 @@
+import axios from 'axios'
 import { env } from '@/constants/env'
 import type { GraylogMessage, GraylogResponse } from '@/types/GraylogResponse'
 import { GraylogError } from '@/utils/GraylogError'
 import { buildGraylogQuery } from '@/utils/graylogQuery'
-import axios from 'axios'
 
-const grayLogHost = env.GRAYLOG_HOST
+const grayLogHost: string = env.GRAYLOG_HOST
 const graylogResponseIgnoreFields = [
   'highlight_ranges',
   'gl2_accounted_message_size',
