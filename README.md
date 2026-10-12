@@ -52,6 +52,13 @@ inputs do seu Graylog forem diferentes.
 
 ## Executar localmente
 
+Clone o repositório e entre no diretório do projeto:
+
+```bash
+git clone https://github.com/yuriprawucki1/watch-logs.git
+cd watch-logs
+```
+
 Instale as dependências travadas pelo lockfile e inicie o servidor:
 
 ```bash
@@ -95,8 +102,9 @@ O container usa Node.js 22.12 e escuta na porta informada por `PORT`.
 
 ## API
 
-Todas as rotas usam o prefixo `/logs`. As rotas de envio recebem JSON; as
-consultas retornam JSON.
+As operações de envio e consulta usam `/logs/{logType}`. As rotas de envio
+recebem JSON; as consultas retornam JSON. `GET` e `POST` em `/` ou `/logs`
+retornam `404` com uma mensagem e a lista de tipos aceitos.
 
 ### Tipos de log
 
@@ -169,9 +177,14 @@ Campos adicionais devem ficar dentro de `additional_fields`; propriedades
 desconhecidas no nível superior são rejeitadas. Esse objeto não pode substituir
 metadados GELF protegidos, como `version`, `host`, `short_message`,
 `full_message`, `timestamp`, `level`, `facility`, `line` ou `file`. O corpo
-HTTP é limitado a 100 KiB.
+HTTP é limitado a 100 KiB. Chaves protegidas em `additional_fields` são
+descartadas no envio, sem rejeitar o payload. Os campos extras são incorporados
+ao objeto GELF, com `version: "1.1"`; os campos ERP do nível superior prevalecem
+sobre extras de mesmo nome.
 
-Uma requisição válida retorna `201 Created` sem corpo.
+Após o envio ao Graylog, a resposta é `201 Created`, com o texto `Created`
+no corpo (`text/plain`). Isso confirma o sucesso da chamada HTTP ao input,
+sem garantir que a mensagem já esteja indexada para consulta.
 
 ### Consultar logs
 
@@ -184,6 +197,8 @@ Use um token de acesso do Graylog como nome de usuário Basic Auth e o texto
 literal `token` como senha. O token é encaminhado à API do Graylog para
 autenticar a consulta. Gere ou revogue tokens no próprio Graylog; consulte a
 [documentação de tokens da API do Graylog](https://go2docs.graylog.org/current/setting_up_graylog/rest_api_access_tokens.htm).
+O middleware valida o formato Basic e repassa usuário e senha; não exige
+que a senha seja literalmente `token` nem valida o token localmente.
 
 Exemplo para buscar logs ERP por código e período:
 
@@ -203,14 +218,17 @@ Os parâmetros de consulta são:
 | --- | --- | --- |
 | `from` | data/hora UTC | Início da consulta absoluta, no formato `YYYY-MM-DDTHH:mm:ss.sssZ`. |
 | `to` | data/hora UTC | Fim da consulta absoluta, no mesmo formato de `from`. |
-| `range` | segundos | Janela da consulta relativa. Se omitida, o serviço envia `0` ao Graylog. |
+| `range` | texto não vazio | Janela relativa em segundos, por exemplo `300`. Se omitida, o serviço envia `0` ao Graylog. O middleware não valida se o texto é numérico. |
 | `{campo}={valor}` | texto | Filtro por campo da mensagem; pode ser combinado com outros filtros. |
 
 Para uma consulta absoluta, envie `from` e `to` juntos; nesse caso `range` é
 ignorado. Sem o par completo, o serviço usa a consulta relativa. Filtros de
 campo são combinados com `AND`, aceitam nomes no padrão
 `^[A-Za-z_][A-Za-z0-9_.-]*$` e exigem valores não vazios. Os valores são
-escapados antes de compor a consulta do Graylog.
+escapados antes de compor a consulta do Graylog; caracteres de controle nos
+valores são rejeitados. As datas são verificadas pelo formato textual, sem
+validação de calendário ou da ordem entre início e fim. Se apenas uma das
+datas for enviada, ela também é repassada à consulta relativa.
 
 A resposta é uma lista JSON com as mensagens encontradas, sem alguns metadados
 internos do Graylog:
@@ -218,8 +236,8 @@ internos do Graylog:
 ```json
 [
   {
-    "host": "aplicacao-pedidos",
-    "short_message": "Pedido processado",
+    "source": "aplicacao-pedidos",
+    "message": "Pedido processado",
     "full_message": "Pedido 12345 processado com sucesso.",
     "level": 6,
     "trace_id": 123456789,
@@ -233,13 +251,23 @@ internos do Graylog:
 | Status | Situação |
 | --- | --- |
 | `200 OK` | Consulta concluída; retorna uma lista JSON. |
-| `201 Created` | Log recebido e encaminhado ao Graylog; corpo vazio. |
+| `201 Created` | Chamada de envio ao Graylog concluída; corpo de texto `Created`. |
 | `400 Bad Request` | Parâmetros, cabeçalho ou corpo inválido. |
 | `404 Not Found` | Rota base acessada sem um `logType`. |
 | `500 Internal Server Error` | Falha interna ou erro de conexão sem resposta do Graylog. |
 
 Quando o Graylog responde com erro, a API repassa o status HTTP e retorna uma
 mensagem genérica; credenciais e conteúdo do log não são incluídos na resposta.
+
+Erros de validação retornam `{"errors":{"campo":"mensagem"}}`; propriedades
+inesperadas aparecem em `campos_inesperados`. Falhas de autenticação Basic,
+filtros e integração usam `{"errors":{"message":"mensagem"}}`. JSON malformado
+ou corpo acima do limite retorna `400` com
+`{"errors":{"message":"Invalid request"}}`.
+
+O exemplo de consulta é ilustrativo: os campos vêm das mensagens retornadas
+pelo Graylog e podem variar conforme seus inputs e pipelines. O middleware
+remove a lista de metadados definida em `src/services/fetchLogs.ts`.
 
 ## Segurança e transporte
 
@@ -264,3 +292,26 @@ mensagem genérica; credenciais e conteúdo do log não são incluídos na respo
 
 Ao adicionar um tipo de log, atualize a lista, o tipo, os schemas e o mapeamento
 do Graylog. Mantenha esta documentação alinhada aos contratos da API.
+
+## Desenvolvimento e revisão
+
+Siga as instruções de [`AGENTS.md`](AGENTS.md) e a configuração do Biome.
+Antes de enviar um PR, execute:
+
+```bash
+npm run lint
+npm run typecheck
+npm test
+npm run build
+git diff --check
+```
+
+O workflow `Validate and release` executa essas quatro verificações npm no
+job `validate` para PRs destinados a `main`. A publicação de release ocorre
+somente em `main` ou por execução manual nesse branch, após a validação.
+
+Envie mudanças por PR e solicite a revisão com um comentário `@codex review`.
+Analise os apontamentos e solicite nova revisão após corrigi-los. O template
+registra esse processo; a solicitação por comentário não é um bloqueio técnico
+de merge. A aprovação humana exigida pelo GitHub deve vir de alguém com
+permissão de escrita, diferente do autor do PR.

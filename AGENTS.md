@@ -60,6 +60,22 @@ manualmente.
   log, variáveis de ambiente, padrões, portas ou instruções de execução.
 - Confira exemplos diretamente contra os schemas e comandos atuais; não
   documente autenticação, validações ou limites que o código não aplica.
+- Confira também os corpos de resposta: o POST usa `res.sendStatus(201)` e
+  retorna texto `Created`. Campos GELF protegidos em `additional_fields` são
+  descartados, sem rejeitar o payload; `range` é validado como texto não vazio.
+
+## Processo de pull request
+
+- Trabalhe em uma branch e envie mudanças por PR para `main`; não faça commits
+  diretamente em `main`.
+- Execute lint, typecheck, testes, build e `git diff --check` antes de concluir.
+- Solicite revisão em um comentário `@codex review`, analise os apontamentos e
+  solicite nova revisão após corrigi-los. O template documenta esse processo;
+  a solicitação por comentário não constitui um requisito técnico de merge.
+- A aprovação humana deve vir de alguém com permissão de escrita, diferente
+  do autor. Uma revisão do Codex não substitui essa aprovação.
+- Preserve a branch de origem enquanto o PR estiver aberto; remova-a após o
+  merge, respeitando as regras de proteção do GitHub.
 
 ## Code Review Rules
 
