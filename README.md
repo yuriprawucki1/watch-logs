@@ -313,5 +313,7 @@ somente em `main` ou por execução manual nesse branch, após a validação.
 Envie mudanças por PR e solicite a revisão com um comentário `@codex review`.
 Analise os apontamentos e solicite nova revisão após corrigi-los. O template
 registra esse processo; a solicitação por comentário não é um bloqueio técnico
-de merge. A aprovação humana exigida pelo GitHub deve vir de alguém com
-permissão de escrita, diferente do autor do PR.
+de merge. Após a revisão do Codex e o sucesso das verificações, o responsável
+pelo repositório ou um colaborador com permissão de escrita pode concluir o
+merge, inclusive quando for o autor do PR. Não é exigida uma aprovação humana
+separada.

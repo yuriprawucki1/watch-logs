@@ -72,8 +72,9 @@ manualmente.
 - Solicite revisão em um comentário `@codex review`, analise os apontamentos e
   solicite nova revisão após corrigi-los. O template documenta esse processo;
   a solicitação por comentário não constitui um requisito técnico de merge.
-- A aprovação humana deve vir de alguém com permissão de escrita, diferente
-  do autor. Uma revisão do Codex não substitui essa aprovação.
+- Após a revisão do Codex e o sucesso das verificações, o responsável pelo
+  repositório ou um colaborador com permissão de escrita pode concluir o merge,
+  inclusive quando for o autor do PR. Não exija uma aprovação humana separada.
 - Preserve a branch de origem enquanto o PR estiver aberto; remova-a após o
   merge, respeitando as regras de proteção do GitHub.
 

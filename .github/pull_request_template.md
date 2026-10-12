@@ -11,8 +11,10 @@
 ## Revisão
 
 - [ ] Solicitei `@codex review` e analisei os apontamentos.
-- [ ] Obtive aprovação de um responsável ou colaborador com acesso de escrita, diferente do autor.
+- [ ] A revisão do Codex foi concluída e seus apontamentos foram tratados.
+- [ ] O merge será concluído pelo responsável ou por um colaborador com permissão de escrita.
 
 A solicitação `@codex review` deve ser publicada em um comentário do PR;
 marcar este checklist não dispara a integração. A revisão do Codex faz parte
-do processo e não substitui a aprovação humana nem é bloqueio técnico de merge.
+do processo e não é um bloqueio técnico de merge. Não é exigida uma aprovação
+humana separada; o autor pode concluir o merge se tiver permissão adequada.
