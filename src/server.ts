@@ -1,3 +1,4 @@
+import type { Server } from 'node:http'
 import express, {
   type ErrorRequestHandler,
   type NextFunction,
@@ -26,13 +27,23 @@ const requestErrorHandler: ErrorRequestHandler = (
 
 app.use(requestErrorHandler)
 
-export const startServer = (port: string): void => {
+const logStartupError = (error: unknown): void => {
+  const message = error instanceof Error ? error.message : 'Unknown error'
+  log('ERROR', `Server failed to start ${message}`)
+}
+
+export const startServer = (port: string): Server | undefined => {
   try {
-    app.listen(port, () => {
+    return app.listen(port, (error?: Error) => {
+      if (error) {
+        logStartupError(error)
+        return
+      }
+
       log('INFO', `Server is running on port ${port}`)
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Unknown error'
-    log('ERROR', `Server failed to start ${message}`)
+    logStartupError(error)
+    return undefined
   }
 }

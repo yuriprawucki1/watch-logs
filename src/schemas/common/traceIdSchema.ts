@@ -9,4 +9,4 @@ export const traceIdSchema = z
   })
   .describe('Unique request identifier.')
   .positive('The traceId must be a positive number.')
-  .int('The traceId must be an integer.')
+  .refine(Number.isInteger, { error: 'The traceId must be an integer.' })

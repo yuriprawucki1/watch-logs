@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { logTypes } from '@/constants/logType'
 import { aditionalFieldsSchema } from '@/schemas/common/aditionalFieldsSchema'
 import { hostSchema } from '@/schemas/common/hostSchema'
+import { traceIdSchema } from '@/schemas/common/traceIdSchema'
 import { paramsSchema } from '@/schemas/paramsSchema'
 import { querySchema } from '@/schemas/querySchema'
 
@@ -45,10 +46,20 @@ test('Zod 4 record schema keeps accepting additional string fields', () => {
   })
 })
 
-test('Express 5 keeps the documented route catalog response', async () => {
+test('Zod 4 preserves integer trace IDs above the safe integer range', () => {
+  const traceId = 9007199254740992
+
+  assert.equal(traceIdSchema.parse(traceId), traceId)
+  assert.equal(
+    firstIssueMessage(traceIdSchema, 1.5),
+    'The traceId must be an integer.'
+  )
+})
+
+test('Express 5 preserves route responses and reports listen failures', async () => {
   // biome-ignore lint/style/noProcessEnv: The route module requires a valid test hostname during initialization.
   process.env.GRAYLOG_HOST = 'graylog.example.com'
-  const { app } = await import('../src/server.js')
+  const { app, startServer } = await import('../src/server.js')
   const server = app.listen(0)
   await once(server, 'listening')
 
@@ -62,6 +73,35 @@ test('Express 5 keeps the documented route catalog response', async () => {
       error: 'You must pass one of the parameters below',
       params: logTypes,
     })
+
+    // biome-ignore lint/suspicious/noConsole: Capture startup diagnostics in this test.
+    const originalConsoleLog = console.log
+    const loggedMessages: string[] = []
+    console.log = (...args: unknown[]): void => {
+      loggedMessages.push(args.join(' '))
+    }
+
+    try {
+      const failedServer = startServer(String(address.port))
+      assert.ok(failedServer)
+
+      const listenError = await new Promise<Error>((resolve) => {
+        failedServer.once('error', resolve)
+      })
+
+      assert.ok(listenError.message.includes('EADDRINUSE'))
+      assert.ok(
+        loggedMessages.some((message) =>
+          message.includes('Server failed to start')
+        )
+      )
+      assert.equal(
+        loggedMessages.some((message) => message.includes('Server is running')),
+        false
+      )
+    } finally {
+      console.log = originalConsoleLog
+    }
   } finally {
     await new Promise<void>((resolve, reject) => {
       server.close((error?: Error) => {
