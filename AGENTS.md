@@ -53,3 +53,27 @@ manualmente.
   publicação, tratamento de falhas e se as verificações do projeto são
   executadas antes da criação da release.
 
+## Documentação
+
+- Mantenha o `README.md` em pt-BR e alinhado ao comportamento implementado.
+- Atualize-o no mesmo PR quando mudarem rotas, parâmetros, schemas, tipos de
+  log, variáveis de ambiente, padrões, portas ou instruções de execução.
+- Confira exemplos diretamente contra os schemas e comandos atuais; não
+  documente autenticação, validações ou limites que o código não aplica.
+
+## Code Review Rules
+
+### Compatibilidade da API
+
+- Sinalize mudanças incompatíveis em rotas, `logType`, payloads, status HTTP,
+  respostas ou configuração pública sem atualização explícita da documentação.
+  Preserve o contrato existente ou descreva a migração necessária.
+
+### Fronteiras de dados e Graylog
+
+- Exija nomes de campo permitidos e valores escapados antes de montar consultas;
+  nunca aceite destinos Graylog arbitrários nem exponha tokens ou conteúdo
+  sensível dos logs.
+- Preserve os campos GELF protegidos, o limite do corpo, os timeouts e o bloqueio
+  de redirects nas chamadas ao Graylog.
+
