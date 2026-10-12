@@ -2,15 +2,16 @@ import { z } from 'zod'
 
 export const levelSchema = z
   .number({
-    message: 'Level must be a number.',
-    required_error: 'Level is required.',
-    invalid_type_error: 'Level must be a number.',
-    description: 'Message level.',
+    error: (issue: { input?: unknown }) =>
+      issue.input === undefined
+        ? 'Level is required.'
+        : 'Level must be a number.',
   })
+  .describe('Message level.')
   .int('Level must be an integer.')
   .min(0, {
-    message: 'Level must be at least 0.',
+    error: 'Level must be at least 0.',
   })
   .max(7, {
-    message: 'Level must be at most 7.',
+    error: 'Level must be at most 7.',
   })

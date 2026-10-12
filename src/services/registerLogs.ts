@@ -1,10 +1,10 @@
+import axios from 'axios'
 import { env } from '@/constants/env'
 import { buildLogEntry } from '@/services/buildLogEntry'
 import type { BaseLog } from '@/types/BaseLog'
 import { GraylogError } from '@/utils/GraylogError'
-import axios from 'axios'
 
-const graylogHost = env.GRAYLOG_HOST
+const graylogHost: string = env.GRAYLOG_HOST
 
 export const register = async (
   data: BaseLog,

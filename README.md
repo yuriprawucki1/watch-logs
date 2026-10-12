@@ -15,7 +15,7 @@ consulta mensagens por tipo de log.
 
 ## Requisitos
 
-- Node.js 22 e npm; ou Docker para executar o container.
+- Node.js 24.21.0 LTS e npm; ou Docker para executar o container.
 - Acesso de rede ao servidor Graylog.
 - Quatro inputs GELF HTTP no Graylog, um para cada tipo de log.
 
@@ -79,6 +79,7 @@ Comandos disponíveis:
 | Comando | Finalidade |
 | --- | --- |
 | `npm run dev` | Inicia o servidor em modo de desenvolvimento. |
+| `npm run commit` | Abre o assistente `czg` para preparar uma mensagem Conventional Commit. |
 | `npm run lint` | Verifica o código com Biome. |
 | `npm run typecheck` | Verifica os tipos TypeScript. |
 | `npm test` | Executa os testes com o executor nativo do Node.js. |
@@ -98,7 +99,7 @@ docker run --rm --name watch-logs \
   watch-logs:local
 ```
 
-O container usa Node.js 22.12 e escuta na porta informada por `PORT`.
+O container usa Node.js 24.21.0 LTS e escuta na porta informada por `PORT`.
 
 ## API
 

@@ -23,11 +23,13 @@ Zod e os consulta ou envia ao Graylog. A documentação de uso está em
 
 ## Desenvolvimento e verificações
 
-O Dockerfile usa Node.js 22. Para desenvolvimento local, instale as
-dependências pelo lockfile e use os scripts do `package.json`:
+O Dockerfile e a CI usam Node.js 24.21.0 LTS, fixado em `.nvmrc`. Para
+desenvolvimento local, instale as dependências pelo lockfile e use os scripts
+do `package.json`:
 
 - `npm ci` instala as dependências travadas.
 - `npm run dev` inicia o servidor em modo de desenvolvimento.
+- `npm run commit` abre o assistente `czg` para mensagens Conventional Commit.
 - `npm run lint` verifica formatação e regras do Biome.
 - `npm run typecheck` verifica os tipos TypeScript.
 - `npm test` executa os testes com o executor nativo do Node.
