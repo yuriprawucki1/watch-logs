@@ -13,7 +13,7 @@
   },
   "author": "Yuri Prawucki",
   "license": "ISC",
-  "description": "Watch logs",
+  "description": "Middleware HTTP em Express e TypeScript para validar, consultar e encaminhar logs ao Graylog.",
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@commitlint/cli": "^19.6.0",
